@@ -1,0 +1,63 @@
+name: Trivy Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.0_Linux-64bit.deb
+          sudo dpkg -i trivy_0.50.0_Linux-64bit.deb
+
+      - name: Install Python dependencies for conversion
+        run: |
+          pip install pandas openpyxl
+
+      - name: Run Trivy vulnerability scan (JSON)
+        run: |
+          trivy fs --exit-code 1 --severity HIGH,CRITICAL --scanners vuln --format json -o trivy-vuln.json .
+
+      - name: Run Trivy secrets scan (JSON)
+        run: |
+          trivy fs --exit-code 1 --scanners secret --format json -o trivy-secret.json .
+
+      - name: Run Trivy dependency scan (JSON)
+        run: |
+          trivy fs --exit-code 1 --scanners config,license --format json -o trivy-dep.json .
+
+      - name: Convert Trivy vulnerability results to Excel
+        run: |
+          python convert_trivy_json_to_excel.py trivy-vuln.json trivy-vuln.xlsx
+
+      - name: Convert Trivy secrets results to Excel
+        run: |
+          python convert_trivy_json_to_excel.py trivy-secret.json trivy-secret.xlsx
+
+      - name: Convert Trivy dependency results to Excel
+        run: |
+          python convert_trivy_json_to_excel.py trivy-dep.json trivy-dep.xlsx
+
+      - name: Upload Trivy scan results as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: |
+            trivy-vuln.xlsx
+            trivy-secret.xlsx
+            trivy-dep.xlsx
