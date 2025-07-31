@@ -23,3 +23,7 @@ This is a simple Snake game implemented in Python using Pygame.
 ---
 
 Replace placeholder assets if you want custom graphics or sounds.
+
+```
+Added trivy scan
+```
